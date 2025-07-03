@@ -58,6 +58,26 @@ def convert_resume_to_pdf(markdown_file_path, output_pdf_path):
             font-weight: bold;
             margin: 8px 0 4px 0;
             padding: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+
+        .job-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            width: 100%;
+        }
+
+        .job-info {
+            flex: 1;
+        }
+
+        .date-range {
+            font-weight: normal;
+            white-space: nowrap;
+            margin-left: 20px;
         }
 
         p {
@@ -77,16 +97,9 @@ def convert_resume_to_pdf(markdown_file_path, output_pdf_path):
         /* Employment history specific styling */
         .job-title {
             font-weight: bold;
-            display: inline;
         }
 
         .company {
-            font-weight: normal;
-            display: inline;
-        }
-
-        .date-range {
-            float: right;
             font-weight: normal;
         }
 
@@ -107,15 +120,6 @@ def convert_resume_to_pdf(markdown_file_path, output_pdf_path):
             padding: 2px 8px;
             border: none;
             vertical-align: top;
-        }
-
-        .two-column {
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .two-column div {
-            width: 48%;
         }
     </style>
     """
@@ -195,9 +199,9 @@ def format_contact_info(contact_text):
 
 def process_employment_entries(html_content):
     """
-    Process employment entries to match the resume format
+    Process employment entries to match the resume format with dates on the same line
     """
-    # Pattern to match job entries
+    # Pattern to match job entries - looking for h3 followed by date paragraph
     job_pattern = r'<h3>(.*?)\s*\|\s*(.*?)</h3>\s*<p><strong>(.*?)</strong></p>'
 
     def format_job_entry(match):
@@ -205,16 +209,24 @@ def process_employment_entries(html_content):
         company = match.group(2).strip()
         date_range = match.group(3).strip()
 
-        return f'''
-        <div style="margin-bottom: 15px;">
-            <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                <h3 style="margin: 0;"><span class="job-title">{job_title}</span>, <span class="company">{company}</span></h3>
-                <div class="date-range">{date_range}</div>
-            </div>
-        </div>
-        '''
+        return f'''<h3><span class="job-info"><span class="job-title">{job_title}</span>, <span class="company">{company}</span></span><span class="date-range">({date_range})</span></h3>'''
 
     html_content = re.sub(job_pattern, format_job_entry, html_content)
+
+    # Also handle education entries
+    education_pattern = r'<h3>(.*?)\s*\|\s*(.*?)</h3>\s*<p><strong>(.*?)</strong></p>'
+    html_content = re.sub(education_pattern, format_job_entry, html_content)
+    
+    # Handle project entries with dates
+    project_pattern = r'<h3>(.*?)</h3>\s*<p><strong>(.*?)</strong></p>'
+    
+    def format_project_entry(match):
+        project_title = match.group(1).strip()
+        date_range = match.group(2).strip()
+        
+        return f'''<h3><span class="job-info"><span class="job-title">{project_title}</span></span><span class="date-range">({date_range})</span></h3>'''
+    
+    html_content = re.sub(project_pattern, format_project_entry, html_content)
 
     return html_content
 
@@ -276,6 +288,19 @@ def convert_resume_to_pdf_weasyprint(markdown_file_path, output_pdf_path):
             font-size: 11pt;
             font-weight: bold;
             margin: 8px 0 4px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+
+        .job-info {
+            flex: 1;
+        }
+
+        .date-range {
+            font-weight: normal;
+            white-space: nowrap;
+            margin-left: 20px;
         }
 
         p {
@@ -323,7 +348,7 @@ def convert_resume_to_pdf_weasyprint(markdown_file_path, output_pdf_path):
 if __name__ == "__main__":
     # File paths
     markdown_file = "example.md"  # Your markdown file
-    pdf_output = "Isaac_Gutierrez_Resume.pdf"
+    pdf_output = "output.pdf"
 
     # Check if markdown file exists
     if not Path(markdown_file).exists():
