@@ -52,6 +52,11 @@ def convert_resume_to_pdf(markdown_file_path, output_pdf_path):
             border-bottom: 1px solid #000;
             padding-bottom: 2px;
         }
+        
+        /* Add extra space above Projects section */
+        .projects-section {
+            margin-top: 35px;
+        }
 
         h3 {
             font-size: 11pt;
@@ -185,6 +190,9 @@ def process_resume_html(html_content):
 
     # Process employment entries to add proper formatting
     html_content = process_employment_entries(html_content)
+    
+    # Add extra spacing above Projects section
+    html_content = re.sub(r'<h2>Projects</h2>', '<h2 class="projects-section">Projects</h2>', html_content)
 
     return html_content
 
