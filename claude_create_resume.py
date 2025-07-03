@@ -59,6 +59,25 @@ def convert_resume_to_pdf(markdown_file_path, output_pdf_path):
             margin-top: 0;
         }
 
+        /* Three-column layout for Skills section using table */
+        .skills-grid {
+            display: table;
+            width: 100%;
+            margin: 8px 0;
+            table-layout: fixed;
+        }
+
+        .skills-row {
+            display: table-row;
+        }
+
+        .skill-item {
+            display: table-cell;
+            width: 33.33%;
+            padding: 2px 8px 2px 0;
+            vertical-align: top;
+        }
+
         h3 {
             font-size: 11pt;
             font-weight: bold;
@@ -133,7 +152,15 @@ def convert_resume_to_pdf(markdown_file_path, output_pdf_path):
     # Process the HTML to match the resume format better
     processed_html = process_resume_html(html_content)
 
-    # Complete HTML document
+    # Save HTML content to file
+    with open('output1.html', 'w', encoding='utf-8') as f:
+        f.write(processed_html)
+
+        # Write processed HTML to output.html 
+        with open('output.html', 'w', encoding='utf-8') as f:
+            f.write(processed_html)
+
+        # Complete HTML document
     full_html = f"""
     <!DOCTYPE html>
     <html>
@@ -194,7 +221,44 @@ def process_resume_html(html_content):
     
     # Add extra spacing above Projects section
     html_content = re.sub(r'<h2>Projects</h2>', '<h2 class="projects-section">Projects</h2>', html_content)
+    
+    # Create two-column layout for Skills and Languages
+    html_content = create_skills_languages_layout(html_content)
 
+    return html_content
+
+
+def create_skills_languages_layout(html_content):
+    """
+    Convert Skills section to a 3-column table layout
+    """
+    # Find the skills list and convert to table
+    skills_pattern = r'<h2>Skills</h2>\s*<ul>(.*?)</ul>'
+    
+    def create_skills_table(match):
+        items_html = match.group(1)
+        # Extract individual list items
+        items = re.findall(r'<li>(.*?)</li>', items_html)
+        
+        # Create table rows with 3 skills each
+        rows = []
+        for i in range(0, len(items), 3):
+            row_items = items[i:i+3]
+            # Pad with empty cells if needed
+            while len(row_items) < 3:
+                row_items.append('')
+            
+            cells = ''.join(f'<div class="skill-item">{"• " + item if item else ""}</div>' for item in row_items)
+            rows.append(f'<div class="skills-row">{cells}</div>')
+        
+        table_content = ''.join(rows)
+        
+        return f'''<h2>Skills</h2>
+<div class="skills-grid">
+{table_content}
+</div>'''
+    
+    html_content = re.sub(skills_pattern, create_skills_table, html_content, flags=re.DOTALL)
     return html_content
 
 
@@ -257,7 +321,11 @@ def convert_resume_to_pdf_weasyprint(markdown_file_path, output_pdf_path):
         html_content = md.convert(markdown_content)
         processed_html = process_resume_html(html_content)
 
-        # CSS for weasyprint
+        # Write processed HTML to output.html
+        with open('output.html', 'w', encoding='utf-8') as f:
+            f.write(processed_html)
+
+    # CSS for weasyprint
         css_content = """
         @page {
             size: A4;
@@ -330,6 +398,25 @@ def convert_resume_to_pdf_weasyprint(markdown_file_path, output_pdf_path):
         .projects-section {
             page-break-before: always;
             margin-top: 0;
+        }
+        
+        /* Three-column layout for Skills section using table */
+        .skills-grid {
+            display: table;
+            width: 100%;
+            margin: 8px 0;
+            table-layout: fixed;
+        }
+
+        .skills-row {
+            display: table-row;
+        }
+
+        .skill-item {
+            display: table-cell;
+            width: 33.33%;
+            padding: 2px 8px 2px 0;
+            vertical-align: top;
         }
         """
 
