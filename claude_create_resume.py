@@ -53,9 +53,10 @@ def convert_resume_to_pdf(markdown_file_path, output_pdf_path):
             padding-bottom: 2px;
         }
         
-        /* Add extra space above Projects section */
+        /* Force Projects section to start on new page */
         .projects-section {
-            margin-top: 35px;
+            page-break-before: always;
+            margin-top: 0;
         }
 
         h3 {
@@ -323,6 +324,12 @@ def convert_resume_to_pdf_weasyprint(markdown_file_path, output_pdf_path):
 
         li {
             margin: 2px 0;
+        }
+        
+        /* Force Projects section to start on new page */
+        .projects-section {
+            page-break-before: always;
+            margin-top: 0;
         }
         """
 
