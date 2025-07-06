@@ -1,6 +1,6 @@
 from typing import Union
 from openai import OpenAI
-
+import json
 
 with open(r"C:\Users\isaac\PycharmProjects\LinkedIn-Easy-Apply-Bot\resume_data\experience.md", "r") as f:
     experience = f.read()
@@ -95,5 +95,22 @@ response = client.chat.completions.create(
     temperature=0,
 )
 #%%
-text=response.choices[0].message.content
+
+text = response.choices[0].message.content
+
+
+def extract_json_from_text(text: str) -> dict:
+    try:
+        # Find the JSON content between the first { and last }
+        start = text.find('{')
+        end = text.rfind('}') + 1
+        if start != -1 and end != 0:
+            json_str = text[start:end]
+            return json.loads(json_str)
+    except json.JSONDecodeError:
+        return {}
+    return {}
+
+
+parsed_response = extract_json_from_text(text)
 #%%
