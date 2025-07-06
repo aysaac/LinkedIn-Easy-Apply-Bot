@@ -1,0 +1,115 @@
+- Convolutional Neural Networks (CNNs)
+- Facial Attribute Detection
+- Object Detection
+- Depth Estimation
+- Image Classification
+- Image Preprocessing
+- State-of-the-Art Techniques
+- Natural Language Processing (NLP)
+- Transformer Models
+- Sentiment Analysis
+- Text Classification
+- Text Preprocessing
+- Word Embeddings
+- Language Models (LLMs)
+- Graph Neural Networks (GNNs)
+- Supervised Learning
+- Unsupervised Learning
+- Transfer Learning
+- Model Training & Evaluation
+- Model Hyperparameter Tuning
+- Multi-Task Learning
+- Data Augmentation
+- Feature Engineering
+- Web Scraping
+- API Integration
+- Data Service Development
+- Data Cleaning
+- Data Transformation
+- Data Pipelines
+- Statistical Analysis
+- Exploratory Data Analysis (EDA)
+- Data Visualization
+- Relational Databases
+- Vector Databases
+- Python
+- JavaScript
+- Excel Macro Language (VBA)
+- Machine Learning Frameworks
+- Computer Vision Libraries
+- Data Science Libraries
+- NLP Libraries
+- Web Scraping Libraries
+- Web Frameworks
+- Excel Automation Libraries
+- Frontend
+- Backend
+- Styling Frameworks
+- Responsive Design
+- API Development
+- Service Development
+- Monitoring Systems
+- Version Control
+- Code Best Practices
+- Implementing State-of-the-Art Techniques
+- Literature Review
+- Critical Thinking
+- Problem Solving
+- Academic Writing
+- Mathematical Concepts
+- Finance/Economics
+- Social Sciences
+- Document Processing
+- Software Development Platforms
+- Gaming
+- Communication
+- Project Management
+- Time Management
+- Self-Learning
+- Attention to Detail
+- Creative Problem Solving
+- Knowledge Graphs
+- Transformer
+- Artificial Intelligence (AI)
+- Learning Management Systems
+- Data Systems
+- Intelligent Systems
+- Model Distillation
+- Prompt Engineering
+- Generative AI Tools
+- Critical Thinking
+- Algorithms
+- Programming
+- Statistics
+- Problem Solving
+- Computer Science
+- Snowflake Cloud
+- Time Series Analysis
+- Big Data
+- SQL
+- MLOps
+- Docker
+- Amazon Web Services (AWS)
+- AWS Lambda
+- Amazon EC2
+- Amazon S3
+- Oracle Cloud
+- Natural Language Processing (NLP)
+- PyTorch
+- TensorFlow
+- NumPy
+- Machine Learning
+- MLOps (duplicate entry removed or emphasized)
+- Natural Language Processing (duplicate entry removed or emphasized)
+- Large Language Models (LLMs)
+- Data Analysis
+- Object-Oriented Programming (OOP)
+- IT Essentials
+- Probability Theory
+- Deep Learning
+- Data Science
+- Finance
+- Financial Analysis
+- Software Development
+- Python
+- R
