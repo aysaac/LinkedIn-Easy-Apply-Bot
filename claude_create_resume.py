@@ -449,7 +449,7 @@ def convert_resume_to_pdf_weasyprint(markdown_file_path, output_pdf_path):
 # Main execution
 if __name__ == "__main__":
     # File paths
-    markdown_file = "cv.md"  # Your markdown file
+    markdown_file = r"C:\Users\isaac\PycharmProjects\LinkedIn-Easy-Apply-Bot\resume_data\complete_resume.md"  # Your markdown file
     pdf_output = "output.pdf"
 
     # Check if markdown file exists

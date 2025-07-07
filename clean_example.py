@@ -2,7 +2,8 @@ from typing import Union
 from openai import OpenAI
 import json
 
-with open(r"C:\Users\isaac\PycharmProjects\LinkedIn-Easy-Apply-Bot\resume_data\experience.md", "r") as f:
+with open(r"C:\Users\isaac\PycharmProjects\LinkedIn-Easy-Apply-Bot\resume_data\experience.md", "r",
+          encoding='utf-8') as f:
     experience = f.read()
 
 
@@ -114,3 +115,43 @@ def extract_json_from_text(text: str) -> dict:
 
 parsed_response = extract_json_from_text(text)
 #%%
+with open(r"C:\Users\isaac\PycharmProjects\LinkedIn-Easy-Apply-Bot\resume_data\personal_info.md", "r",
+          encoding='utf-8') as f:
+    personal_info=f.read()
+
+PROFILE_TEMPLATE=f"""
+## Profile
+
+{parsed_response.get("profile", "")}
+
+---
+
+"""
+
+EXPERIENCE_TEMPLATE=experience[:experience.find("## Projects")]
+
+Projects=experience[experience.find("## Projects"):experience.find("## Skills")]
+
+SKILL_LIST = [("- " + x.split('(')[0].strip()) for x in parsed_response.get("skills", [])]
+SKILL_LIST="\n".join(SKILL_LIST)
+
+SKILL_TEMPLATE = f"""
+## Skills
+{SKILL_LIST}
+
+"""
+
+COMPLETE_MARKDOWN=f"""
+{personal_info}
+{PROFILE_TEMPLATE}
+{EXPERIENCE_TEMPLATE}
+{SKILL_TEMPLATE}
+
+{Projects}
+
+"""
+
+with open(r"C:\Users\isaac\PycharmProjects\LinkedIn-Easy-Apply-Bot\resume_data\complete_resume.md", "w",encoding="utf-8") as f:
+    f.write(COMPLETE_MARKDOWN)
+
+
