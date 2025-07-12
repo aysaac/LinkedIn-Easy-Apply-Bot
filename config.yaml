@@ -1,6 +1,6 @@
-username: <username>
-password: <password>
-phone_number: <phone_number>
+username: isaacgr2014@hotmail.com
+password: /aJ'bC"6U9;kiaz
+phone_number: 2224738808
 
 profile_path: '' #can be empty, will default to 'C:\Users\<user>\AppData\Local\Google\Chrome\User Data\Default'
 
@@ -10,28 +10,32 @@ positions:
 
 
 locations:
-- Michigan
-- Remote
 
-salary: 60,000
-rate: 25
+- United States
+- Union Europea
+
+salary: 90,000
+rate: 40
 # --------- Optional Parameters -------
 uploads:
-  Resume: /Users/steven/Desktop/LinkedIn-Easy-Apply-Bot/cv.pdf
-  Cover Letter: /Users/steven/Desktop/LinkedIn-Easy-Apply-Bot/cl.pdf
+  Resume: C:\Users\isaac\PycharmProjects\LinkedIn-Easy-Apply-Bot\cv.pdf
+  Cover Letter: C:\Users\isaac\PycharmProjects\LinkedIn-Easy-Apply-Bot\cl.pdf
   #Photo: # PATH TO photo
 
 
 output_filename:
-- /Users/steven/Desktop/LinkedIn-Easy-Apply-Bot/out.csv
+- C:\Users\isaac\PycharmProjects\LinkedIn-Easy-Apply-Bot\out.csv
 
 # blacklist:
 # - # Company names you want to ignore
 
+# Resume generation settings
+generate_custom_resume: true  # Set to false to disable custom resume generation
+
 experience_level:
   # - 1 # Entry level
-  # - 2 # Associate
-  # - 3 # Mid-Senior level
+   - 2 # Associate
+   - 3 # Mid-Senior level
   # - 4 # Director
   # - 5 # Executive
   # - 6 # Internship

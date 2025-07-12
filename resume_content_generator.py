@@ -9,7 +9,7 @@ class ResumeContentGenerator:
     def __init__(self, 
                  experience_file: str = "resume_data/experience.md",
                  personal_info_file: str = "resume_data/personal_info.md",
-                 openai_model: str = "gpt-4o-mini",
+                 openai_model: str = "gpt-4.1",
                  weave_project: str = "resume-generator"):
         """
         Initialize the resume content generator.

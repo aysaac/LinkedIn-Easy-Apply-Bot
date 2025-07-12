@@ -26,8 +26,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from selenium.webdriver.chrome.service import Service as ChromeService
 import webdriver_manager.chrome as ChromeDriverManager
-ChromeDriverManager = ChromeDriverManager.ChromeDriverManager
+from resume_manager import ResumeManager
 
+ChromeDriverManager = ChromeDriverManager.ChromeDriverManager
 
 log = logging.getLogger(__name__)
 
@@ -65,7 +66,8 @@ class EasyApplyBot:
                  filename='output.csv',
                  blacklist=[],
                  blackListTitles=[],
-                 experience_level=[]
+                 experience_level=[],
+                 generate_custom_resume=False
                  ) -> None:
 
         log.info("Welcome to Easy Apply Bot")
@@ -85,7 +87,6 @@ class EasyApplyBot:
             log.info("Applying for experience level roles: " + ", ".join(applied_levels))
         else:
             log.info("Applying for all experience levels")
-        
 
         self.uploads = uploads
         self.salary = salary
@@ -95,14 +96,44 @@ class EasyApplyBot:
         self.appliedJobIDs: list = past_ids if past_ids != None else []
         self.filename: str = filename
         self.options = self.browser_options()
-        self.browser = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=self.options)
+        try:
+            self.browser = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),
+                                            options=self.options)
+        except Exception as e:
+            log.warning(f"ChromeDriverManager failed: {e}. Trying local ChromeDriver...")
+            # Fallback to local ChromeDriver
+            local_chromedriver = os.path.join(os.getcwd(), "assets", "chromedriver-win64", "chromedriver.exe")
+            if os.path.exists(local_chromedriver):
+                self.browser = webdriver.Chrome(service=ChromeService(local_chromedriver), options=self.options)
+            else:
+                log.error("No ChromeDriver found. Please check your ChromeDriver installation.")
+                raise e
         self.wait = WebDriverWait(self.browser, 30)
         self.blacklist = blacklist
         self.blackListTitles = blackListTitles
         self.start_linkedin(username, password)
         self.phone_number = phone_number
         self.experience_level = experience_level
-
+        self.generate_custom_resume = generate_custom_resume
+        
+        # Initialize Resume Manager
+        if self.generate_custom_resume:
+            try:
+                self.resume_manager = ResumeManager(
+                    output_dir="generated_resumes",
+                    weave_project="linkedin-easy-apply-bot"
+                )
+                # Store original resume path
+                self.original_resume_path = self.uploads.get("Resume", None)
+                log.info("Resume Manager initialized successfully")
+            except Exception as e:
+                log.warning(f"Resume Manager failed to initialize: {e}")
+                self.resume_manager = None
+                self.original_resume_path = None
+        else:
+            log.info("Custom resume generation disabled")
+            self.resume_manager = None
+            self.original_resume_path = None
 
         self.locator = {
             "next": (By.CSS_SELECTOR, "button[aria-label='Continue to next step']"),
@@ -116,7 +147,7 @@ class EasyApplyBot:
             "search": (By.CLASS_NAME, "jobs-search-results-list"),
             "links": ("xpath", '//div[@data-job-id]'),
             "fields": (By.CLASS_NAME, "jobs-easy-apply-form-section__grouping"),
-            "radio_select": (By.CSS_SELECTOR, "input[type='radio']"), #need to append [value={}].format(answer)
+            "radio_select": (By.CSS_SELECTOR, "input[type='radio']"),  # need to append [value={}].format(answer)
             "multi_select": (By.XPATH, "//*[contains(@id, 'text-entity-list-form-component')]"),
             "text_select": (By.CLASS_NAME, "artdeco-text-input--input"),
             "2fa_oneClick": (By.ID, 'reset-password-submit-button'),
@@ -124,20 +155,19 @@ class EasyApplyBot:
 
         }
 
-        #initialize questions and answers file
+        # initialize questions and answers file
         self.qa_file = Path("qa.csv")
         self.answers = {}
 
-        #if qa file does not exist, create it
+        # if qa file does not exist, create it
         if self.qa_file.is_file():
             df = pd.read_csv(self.qa_file)
             for index, row in df.iterrows():
                 self.answers[row['Question']] = row['Answer']
-        #if qa file does exist, load it
+        # if qa file does exist, load it
         else:
             df = pd.DataFrame(columns=["Question", "Answer"])
             df.to_csv(self.qa_file, index=False, encoding='utf-8')
-
 
     def get_appliedIDs(self, filename) -> list | None:
         try:
@@ -162,25 +192,25 @@ class EasyApplyBot:
         options.add_argument("--ignore-certificate-errors")
         options.add_argument('--no-sandbox')
         options.add_argument("--disable-extensions")
-        #options.add_argument(r'--remote-debugging-port=9222')
-        #options.add_argument(r'--profile-directory=Person 1')
+        # options.add_argument(r'--remote-debugging-port=9222')
+        # options.add_argument(r'--profile-directory=Person 1')
 
         # Disable webdriver flags or you will be easily detectable
         options.add_argument("--disable-blink-features")
         options.add_argument("--disable-blink-features=AutomationControlled")
 
         # Load user profile
-        #options.add_argument(r"--user-data-dir={}".format(self.profile_path))
+        # options.add_argument(r"--user-data-dir={}".format(self.profile_path))
         return options
 
     def start_linkedin(self, username, password) -> None:
         log.info("Logging in.....Please wait :)  ")
         self.browser.get("https://www.linkedin.com/login?trk=guest_homepage-basic_nav-header-signin")
         try:
-            user_field = self.browser.find_element("id","username")
-            pw_field = self.browser.find_element("id","password")
+            user_field = self.browser.find_element("id", "username")
+            pw_field = self.browser.find_element("id", "password")
             login_button = self.browser.find_element("xpath",
-                        '//*[@id="organic-div"]/form/div[3]/button')
+                                                     '/html/body/div/main/div[2]/div[1]/form/div[4]/button')
             user_field.send_keys(username)
             user_field.send_keys(Keys.TAB)
             time.sleep(2)
@@ -243,7 +273,7 @@ class EasyApplyBot:
                 # sleep to make sure everything loads, add random to make us look human.
                 randoTime: float = random.uniform(1.5, 2.9)
                 log.debug(f"Sleeping for {round(randoTime, 1)}")
-                #time.sleep(randoTime)
+                # time.sleep(randoTime)
                 self.load_page(sleep=0.5)
 
                 # LinkedIn displays the search results in a scrollable <div> on the left side, we have to scroll to its bottom
@@ -259,42 +289,43 @@ class EasyApplyBot:
                     for i in range(300, 3000, 100):
                         self.browser.execute_script("arguments[0].scrollTo(0, {})".format(i), scrollresults[0])
                     scrollresults = self.get_elements("search")
-                    #time.sleep(1)
+                    # time.sleep(1)
 
                 # get job links, (the following are actually the job card objects)
                 if self.is_present(self.locator["links"]):
                     links = self.get_elements("links")
-                # links = self.browser.find_elements("xpath",
-                #     '//div[@data-job-id]'
-                # )
+                    # links = self.browser.find_elements("xpath",
+                    #     '//div[@data-job-id]'
+                    # )
 
-                    jobIDs = {} #{Job id: processed_status}
-                
+                    jobIDs = {}  # {Job id: processed_status}
+
                     # children selector is the container of the job cards on the left
                     for link in links:
-                            if 'Applied' not in link.text: #checking if applied already
-                                if link.text not in self.blacklist: #checking if blacklisted
-                                    jobID = link.get_attribute("data-job-id")
-                                    if jobID == "search":
-                                        log.debug("Job ID not found, search keyword found instead? {}".format(link.text))
-                                        continue
-                                    else:
-                                        jobIDs[jobID] = "To be processed"
+                        if 'Applied' not in link.text:  # checking if applied already
+                            if link.text not in self.blacklist:  # checking if blacklisted
+                                jobID = link.get_attribute("data-job-id")
+                                if jobID == "search":
+                                    log.debug("Job ID not found, search keyword found instead? {}".format(link.text))
+                                    continue
+                                else:
+                                    jobIDs[jobID] = "To be processed"
                     if len(jobIDs) > 0:
                         self.apply_loop(jobIDs)
                     self.browser, jobs_per_page = self.next_jobs_page(position,
                                                                       location,
-                                                                      jobs_per_page, 
+                                                                      jobs_per_page,
                                                                       experience_level=self.experience_level)
                 else:
                     self.browser, jobs_per_page = self.next_jobs_page(position,
                                                                       location,
-                                                                      jobs_per_page, 
+                                                                      jobs_per_page,
                                                                       experience_level=self.experience_level)
 
 
             except Exception as e:
                 print(e)
+
     def apply_loop(self, jobIDs):
         for jobID in jobIDs:
             if jobIDs[jobID] == "To be processed":
@@ -314,9 +345,28 @@ class EasyApplyBot:
         # let page load
         time.sleep(1)
 
+        job_description,job_name,company_name=self.get_job_description()
+        
+        # Generate custom resume for this job
+        custom_resume_path = None
+        if self.resume_manager:
+            try:
+                log.info(f"Generating custom resume for {job_name} at {company_name}")
+                custom_resume_path = self.resume_manager.create_resume(
+                    job=job_name,
+                    company=company_name,
+                    description=job_description
+                )
+                log.info(f"Custom resume generated: {custom_resume_path}")
+                # Update uploads with the new resume path
+                if "Resume" in self.uploads:
+                    self.uploads["Resume"] = custom_resume_path
+            except Exception as e:
+                log.error(f"Failed to generate custom resume: {e}")
+                log.info("Continuing with original resume")
+
         # get easy apply button
         button = self.get_easy_apply_button()
-
 
         # word filter to skip positions not wanted
         if button is not False:
@@ -345,14 +395,18 @@ class EasyApplyBot:
             string_easy = "* Doesn't have Easy Apply Button"
             result = False
 
-
         # position_number: str = str(count_job + jobs_per_page)
         log.info(f"\nPosition {jobID}:\n {self.browser.title} \n {string_easy} \n")
 
-        self.write_to_file(button, jobID, self.browser.title, result)
+        self.write_to_file(button, jobID, self.browser.title, result, custom_resume_path)
+        
+        # Reset to original resume path for next job
+        if self.original_resume_path and "Resume" in self.uploads:
+            self.uploads["Resume"] = self.original_resume_path
+            
         return result
 
-    def write_to_file(self, button, jobID, browserTitle, result) -> None:
+    def write_to_file(self, button, jobID, browserTitle, result, resume_path=None) -> None:
         def re_extract(text, pattern):
             target = re.search(pattern, text)
             if target:
@@ -363,8 +417,11 @@ class EasyApplyBot:
         attempted: bool = False if button == False else True
         job = re_extract(browserTitle.split(' | ')[0], r"\(?\d?\)?\s?(\w.*)")
         company = re_extract(browserTitle.split(' | ')[1], r"(\w.*)")
+        
+        # Add resume path info if available
+        resume_info = resume_path if resume_path else "Original Resume"
 
-        toWrite: list = [timestamp, jobID, job, company, attempted, result]
+        toWrite: list = [timestamp, jobID, job, company, attempted, result, resume_info]
         with open(self.filename, 'a+') as f:
             writer = csv.writer(f)
             writer.writerow(toWrite)
@@ -374,6 +431,7 @@ class EasyApplyBot:
         job: str = 'https://www.linkedin.com/jobs/view/' + str(jobID)
         self.browser.get(job)
         self.job_page = self.load_page(sleep=0.5)
+
         return self.job_page
 
     def get_easy_apply_button(self):
@@ -384,16 +442,15 @@ class EasyApplyBot:
             #     '//button[contains(@class, "jobs-apply-button")]'
             # )
             for button in buttons:
-                if "Easy Apply" in button.text:
+                if ("Easy Apply" in button.text) or ('Solicitud sencilla' in button.text):
                     EasyApplyButton = button
                     self.wait.until(EC.element_to_be_clickable(EasyApplyButton))
                 else:
                     log.debug("Easy Apply button not found")
-            
-        except Exception as e: 
-            print("Exception:",e)
-            log.debug("Easy Apply button not found")
 
+        except Exception as e:
+            print("Exception:", e)
+            log.debug("Easy Apply button not found")
 
         return EasyApplyButton
 
@@ -406,9 +463,7 @@ class EasyApplyBot:
                 field_input.clear()
                 field_input.send_keys(self.phone_number)
 
-
         return
-
 
     def get_elements(self, type) -> list:
         elements = []
@@ -427,14 +482,14 @@ class EasyApplyBot:
                                                   button_locator[1])) > 0
 
         try:
-            #time.sleep(random.uniform(1.5, 2.5))
+            # time.sleep(random.uniform(1.5, 2.5))
             next_locator = (By.CSS_SELECTOR,
                             "button[aria-label='Continue to next step']")
             review_locator = (By.CSS_SELECTOR,
                               "button[aria-label='Review your application']")
             submit_locator = (By.CSS_SELECTOR,
                               "button[aria-label='Submit application']")
-            error_locator = (By.CLASS_NAME,"artdeco-inline-feedback__message")
+            error_locator = (By.CLASS_NAME, "artdeco-inline-feedback__message")
             upload_resume_locator = (By.XPATH, '//span[text()="Upload resume"]')
             upload_cv_locator = (By.XPATH, '//span[text()="Upload cover letter"]')
             # WebElement upload_locator = self.browser.find_element(By.NAME, "file")
@@ -446,9 +501,10 @@ class EasyApplyBot:
                 time.sleep(1)
                 # Upload resume
                 if is_present(upload_resume_locator):
-                    #upload_locator = self.browser.find_element(By.NAME, "file")
+                    # upload_locator = self.browser.find_element(By.NAME, "file")
                     try:
-                        resume_locator = self.browser.find_element(By.XPATH, "//*[contains(@id, 'jobs-document-upload-file-input-upload-resume')]")
+                        resume_locator = self.browser.find_element(By.XPATH,
+                                                                   "//*[contains(@id, 'jobs-document-upload-file-input-upload-resume')]")
                         resume = self.uploads["Resume"]
                         resume_locator.send_keys(resume)
                     except Exception as e:
@@ -459,10 +515,11 @@ class EasyApplyBot:
                 # Upload cover letter if possible
                 if is_present(upload_cv_locator):
                     cv = self.uploads["Cover Letter"]
-                    cv_locator = self.browser.find_element(By.XPATH, "//*[contains(@id, 'jobs-document-upload-file-input-upload-cover-letter')]")
+                    cv_locator = self.browser.find_element(By.XPATH,
+                                                           "//*[contains(@id, 'jobs-document-upload-file-input-upload-cover-letter')]")
                     cv_locator.send_keys(cv)
 
-                    #time.sleep(random.uniform(4.5, 6.5))
+                    # time.sleep(random.uniform(4.5, 6.5))
                 elif len(self.get_elements("follow")) > 0:
                     elements = self.get_elements("follow")
                     for element in elements:
@@ -502,8 +559,8 @@ class EasyApplyBot:
                                 submitted = False
                                 break
                         continue
-                        #add explicit wait
-                    
+                        # add explicit wait
+
                     else:
                         log.info("Application not submitted")
                         time.sleep(2)
@@ -532,16 +589,18 @@ class EasyApplyBot:
             log.error(e)
             log.error("cannot apply to this job")
             pass
-            #raise (e)
+            # raise (e)
 
         return submitted
+
     def process_questions(self):
         time.sleep(1)
-        form = self.get_elements("fields") #self.browser.find_elements(By.CLASS_NAME, "jobs-easy-apply-form-section__grouping")
+        form = self.get_elements(
+            "fields")  # self.browser.find_elements(By.CLASS_NAME, "jobs-easy-apply-form-section__grouping")
         for field in form:
             question = field.text
             answer = self.ans_question(question.lower())
-            #radio button
+            # radio button
             if self.is_present(self.locator["radio_select"]):
                 try:
                     input = field.find_element(By.CSS_SELECTOR, "input[type='radio'][value={}]".format(answer))
@@ -549,7 +608,7 @@ class EasyApplyBot:
                 except Exception as e:
                     log.error(e)
                     continue
-            #multi select
+            # multi select
             elif self.is_present(self.locator["multi_select"]):
                 try:
                     input = field.find_element(self.locator["multi_select"])
@@ -567,10 +626,10 @@ class EasyApplyBot:
                     continue
 
             elif self.is_present(self.locator["text_select"]):
-               pass
+                pass
 
-            if "Yes" or "No" in answer: #radio button
-                try: #debug this
+            if "Yes" or "No" in answer:  # radio button
+                try:  # debug this
                     input = form.find_element(By.CSS_SELECTOR, "input[type='radio'][value={}]".format(answer))
                     form.execute_script("arguments[0].click();", input)
                 except:
@@ -581,7 +640,7 @@ class EasyApplyBot:
                 input = form.find_element(By.CLASS_NAME, "artdeco-text-input--input")
                 input.send_keys(answer)
 
-    def ans_question(self, question): #refactor this to an ans.yaml file
+    def ans_question(self, question):  # refactor this to an ans.yaml file
         answer = None
         if "how many" in question:
             answer = "1"
@@ -617,7 +676,7 @@ class EasyApplyBot:
             answer = "Yes"
         else:
             log.info("Not able to answer question automatically. Please provide answer")
-            #open file and document unanswerable questions, appending to it
+            # open file and document unanswerable questions, appending to it
             answer = "user provided"
             time.sleep(15)
 
@@ -667,13 +726,36 @@ class EasyApplyBot:
             # URL for jobs page
             "https://www.linkedin.com/jobs/search/?f_LF=f_AL&keywords=" +
             position + location + "&start=" + str(jobs_per_page) + experience_level_param)
-        #self.avoid_lock()
+        # self.avoid_lock()
         log.info("Loading next job page?")
         self.load_page()
         return (self.browser, jobs_per_page)
 
     # def finish_apply(self) -> None:
     #     self.browser.close()
+    def get_job_description(self)->tuple[str,str,str]:
+
+        self.wait.until(
+            EC.element_to_be_clickable(
+                (By.XPATH, "/html/body/div[5]/div[3]/div[2]/div/div/main/div[2]/div[1]/div/div[4]/footer/button/span")
+            )
+        ).click()
+
+        complete_text = self.browser.find_element("xpath",
+                              "/html/body/div[5]/div[3]/div[2]/div/div/main/div[2]/div[1]/div/div[4]").text
+
+        string_start=complete_text.find("Acerca del empleo")
+        string_end=complete_text.find("Ver más")
+
+        company_name=self.browser.find_element("xpath",
+              "/html/body/div[5]/div[3]/div[2]/div/div/main/div[2]/div[1]/div/div[1]/div/div/div/div[1]").text.split("\n")[0]
+
+        job_name=self.browser.find_element("xpath",
+            "/html/body/div[5]/div[3]/div[2]/div/div/main/div[2]/div[1]/div/div[1]/div/div/div/div[2]/div/h1").text
+
+
+        return complete_text[string_start:string_end].strip(),job_name,company_name
+
 
 
 if __name__ == '__main__':
@@ -689,7 +771,6 @@ if __name__ == '__main__':
     assert parameters['username'] is not None
     assert parameters['password'] is not None
     assert parameters['phone_number'] is not None
-
 
     if 'uploads' in parameters.keys() and type(parameters['uploads']) == list:
         raise Exception("uploads read from the config file appear to be in list format" +
@@ -714,13 +795,12 @@ if __name__ == '__main__':
                        parameters['password'],
                        parameters['phone_number'],
                        parameters['salary'],
-                       parameters['rate'], 
+                       parameters['rate'],
                        uploads=uploads,
                        filename=output_filename,
                        blacklist=blacklist,
                        blackListTitles=blackListTitles,
-                       experience_level=parameters.get('experience_level', [])
+                       experience_level=parameters.get('experience_level', []),
+                       generate_custom_resume=parameters.get('generate_custom_resume', False)
                        )
     bot.start_apply(positions, locations)
-
-

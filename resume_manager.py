@@ -12,7 +12,7 @@ class ResumeManager:
                  experience_file: str = "resume_data/experience.md",
                  personal_info_file: str = "resume_data/personal_info.md",
                  output_dir: str = "generated_resumes",
-                 openai_model: str = "gpt-4o-mini",
+                 openai_model: str = "gpt-4.1",
                  weave_project: str = "resume-generator",
                  wkhtmltopdf_path: Optional[str] = None):
         """
