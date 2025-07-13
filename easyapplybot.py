@@ -136,8 +136,8 @@ class EasyApplyBot:
             self.original_resume_path = None
 
         self.locator = {
-            "next": (By.CSS_SELECTOR, "button[aria-label='Continue to next step']"),
-            "review": (By.CSS_SELECTOR, "button[aria-label='Review your application']"),
+            "next": (By.CSS_SELECTOR, "button[aria-label='Ir al siguiente paso']"),
+            "review": (By.CSS_SELECTOR, "button[aria-label='Revisar tu solicitud']"),
             "submit": (By.CSS_SELECTOR, "button[aria-label='Submit application']"),
             "error": (By.CLASS_NAME, "artdeco-inline-feedback__message"),
             "upload_resume": (By.XPATH, "//*[contains(@id, 'jobs-document-upload-file-input-upload-resume')]"),
@@ -217,7 +217,8 @@ class EasyApplyBot:
             pw_field.send_keys(password)
             time.sleep(2)
             login_button.click()
-            time.sleep(15)
+            time.sleep(5)
+            log.info("Logged in successfully :)")
             # if self.is_present(self.locator["2fa_oneClick"]):
             #     oneclick_auth = self.browser.find_element(by='id', value='reset-password-submit-button')
             #     if oneclick_auth is not None:
@@ -234,6 +235,7 @@ class EasyApplyBot:
 
     def start_apply(self, positions, locations) -> None:
         start: float = time.time()
+        log.info("Logging into linkendin")
         self.fill_data()
         self.positions = positions
         self.locations = locations
@@ -327,6 +329,7 @@ class EasyApplyBot:
                 print(e)
 
     def apply_loop(self, jobIDs):
+        log.info("Starting apply loop")
         for jobID in jobIDs:
             if jobIDs[jobID] == "To be processed":
                 applied = self.apply_to_job(jobID)
@@ -427,7 +430,7 @@ class EasyApplyBot:
             writer.writerow(toWrite)
 
     def get_job_page(self, jobID):
-
+        log.info("getting job page")
         job: str = 'https://www.linkedin.com/jobs/view/' + str(jobID)
         self.browser.get(job)
         self.job_page = self.load_page(sleep=0.5)
@@ -505,7 +508,7 @@ class EasyApplyBot:
                     try:
                         resume_locator = self.browser.find_element(By.XPATH,
                                                                    "//*[contains(@id, 'jobs-document-upload-file-input-upload-resume')]")
-                        resume = self.uploads["Resume"]
+                        resume = (os.path.join(r"C:\Users\isaac\PycharmProjects\LinkedIn-Easy-Apply-Bot",self.uploads["Resume"]))
                         resume_locator.send_keys(resume)
                     except Exception as e:
                         log.error(e)
