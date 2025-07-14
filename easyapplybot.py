@@ -67,7 +67,8 @@ class EasyApplyBot:
                  blacklist=[],
                  blackListTitles=[],
                  experience_level=[],
-                 generate_custom_resume=False
+                 generate_custom_resume=True,
+                 scrape_only_mode=True
                  ) -> None:
 
         log.info("Welcome to Easy Apply Bot")
@@ -115,6 +116,7 @@ class EasyApplyBot:
         self.phone_number = phone_number
         self.experience_level = experience_level
         self.generate_custom_resume = generate_custom_resume
+        self.scrape_only_mode = scrape_only_mode
         
         # Initialize Resume Manager
         if self.generate_custom_resume:
@@ -371,35 +373,8 @@ class EasyApplyBot:
         # get easy apply button
         button = self.get_easy_apply_button()
 
-        # word filter to skip positions not wanted
-        if button is not False:
-            if any(word in self.browser.title for word in blackListTitles):
-                log.info('skipping this application, a blacklisted keyword was found in the job position')
-                string_easy = "* Contains blacklisted keyword"
-                result = False
-            else:
-                string_easy = "* has Easy Apply Button"
-                log.info("Clicking the EASY apply button")
-                button.click()
-                clicked = True
-                time.sleep(1)
-                self.fill_out_fields()
-                result: bool = self.send_resume()
-                if result:
-                    string_easy = "*Applied: Sent Resume"
-                else:
-                    string_easy = "*Did not apply: Failed to send Resume"
-        elif "You applied on" in self.browser.page_source:
-            log.info("You have already applied to this position.")
-            string_easy = "* Already Applied"
-            result = False
-        else:
-            log.info("The Easy apply button does not exist.")
-            string_easy = "* Doesn't have Easy Apply Button"
-            result = False
-
-        # position_number: str = str(count_job + jobs_per_page)
-        log.info(f"\nPosition {jobID}:\n {self.browser.title} \n {string_easy} \n")
+        if custom_resume_path:
+            result =True
 
         self.write_to_file(button, jobID, self.browser.title, result, custom_resume_path)
         
@@ -457,17 +432,6 @@ class EasyApplyBot:
 
         return EasyApplyButton
 
-    def fill_out_fields(self):
-        fields = self.browser.find_elements(By.CLASS_NAME, "jobs-easy-apply-form-section__grouping")
-        for field in fields:
-
-            if "Mobile phone number" in field.text:
-                field_input = field.find_element(By.TAG_NAME, "input")
-                field_input.clear()
-                field_input.send_keys(self.phone_number)
-
-        return
-
     def get_elements(self, type) -> list:
         elements = []
         element = self.locator[type]
@@ -479,223 +443,7 @@ class EasyApplyBot:
         return len(self.browser.find_elements(locator[0],
                                               locator[1])) > 0
 
-    def send_resume(self) -> bool:
-        def is_present(button_locator) -> bool:
-            return len(self.browser.find_elements(button_locator[0],
-                                                  button_locator[1])) > 0
 
-        try:
-            # time.sleep(random.uniform(1.5, 2.5))
-            next_locator = (By.CSS_SELECTOR,
-                            "button[aria-label='Continue to next step']")
-            review_locator = (By.CSS_SELECTOR,
-                              "button[aria-label='Review your application']")
-            submit_locator = (By.CSS_SELECTOR,
-                              "button[aria-label='Submit application']")
-            error_locator = (By.CLASS_NAME, "artdeco-inline-feedback__message")
-            upload_resume_locator = (By.XPATH, '//span[text()="Upload resume"]')
-            upload_cv_locator = (By.XPATH, '//span[text()="Upload cover letter"]')
-            # WebElement upload_locator = self.browser.find_element(By.NAME, "file")
-            follow_locator = (By.CSS_SELECTOR, "label[for='follow-company-checkbox']")
-
-            submitted = False
-            loop = 0
-            while loop < 2:
-                time.sleep(1)
-                # Upload resume
-                if is_present(upload_resume_locator):
-                    # upload_locator = self.browser.find_element(By.NAME, "file")
-                    try:
-                        resume_locator = self.browser.find_element(By.XPATH,
-                                                                   "//*[contains(@id, 'jobs-document-upload-file-input-upload-resume')]")
-                        resume = (os.path.join(r"C:\Users\isaac\PycharmProjects\LinkedIn-Easy-Apply-Bot",self.uploads["Resume"]))
-                        resume_locator.send_keys(resume)
-                    except Exception as e:
-                        log.error(e)
-                        log.error("Resume upload failed")
-                        log.debug("Resume: " + resume)
-                        log.debug("Resume Locator: " + str(resume_locator))
-                # Upload cover letter if possible
-                if is_present(upload_cv_locator):
-                    cv = self.uploads["Cover Letter"]
-                    cv_locator = self.browser.find_element(By.XPATH,
-                                                           "//*[contains(@id, 'jobs-document-upload-file-input-upload-cover-letter')]")
-                    cv_locator.send_keys(cv)
-
-                    # time.sleep(random.uniform(4.5, 6.5))
-                elif len(self.get_elements("follow")) > 0:
-                    elements = self.get_elements("follow")
-                    for element in elements:
-                        button = self.wait.until(EC.element_to_be_clickable(element))
-                        button.click()
-
-                if len(self.get_elements("submit")) > 0:
-                    elements = self.get_elements("submit")
-                    for element in elements:
-                        button = self.wait.until(EC.element_to_be_clickable(element))
-                        button.click()
-                        log.info("Application Submitted")
-                        submitted = True
-                        break
-
-                elif len(self.get_elements("error")) > 0:
-                    elements = self.get_elements("error")
-                    if "application was sent" in self.browser.page_source:
-                        log.info("Application Submitted")
-                        submitted = True
-                        break
-                    elif len(elements) > 0:
-                        while len(elements) > 0:
-                            log.info("Please answer the questions, waiting 5 seconds...")
-                            time.sleep(5)
-                            elements = self.get_elements("error")
-
-                            for element in elements:
-                                self.process_questions()
-
-                            if "application was sent" in self.browser.page_source:
-                                log.info("Application Submitted")
-                                submitted = True
-                                break
-                            elif is_present(self.locator["easy_apply_button"]):
-                                log.info("Skipping application")
-                                submitted = False
-                                break
-                        continue
-                        # add explicit wait
-
-                    else:
-                        log.info("Application not submitted")
-                        time.sleep(2)
-                        break
-                    # self.process_questions()
-
-                elif len(self.get_elements("next")) > 0:
-                    elements = self.get_elements("next")
-                    for element in elements:
-                        button = self.wait.until(EC.element_to_be_clickable(element))
-                        button.click()
-
-                elif len(self.get_elements("review")) > 0:
-                    elements = self.get_elements("review")
-                    for element in elements:
-                        button = self.wait.until(EC.element_to_be_clickable(element))
-                        button.click()
-
-                elif len(self.get_elements("follow")) > 0:
-                    elements = self.get_elements("follow")
-                    for element in elements:
-                        button = self.wait.until(EC.element_to_be_clickable(element))
-                        button.click()
-
-        except Exception as e:
-            log.error(e)
-            log.error("cannot apply to this job")
-            pass
-            # raise (e)
-
-        return submitted
-
-    def process_questions(self):
-        time.sleep(1)
-        form = self.get_elements(
-            "fields")  # self.browser.find_elements(By.CLASS_NAME, "jobs-easy-apply-form-section__grouping")
-        for field in form:
-            question = field.text
-            answer = self.ans_question(question.lower())
-            # radio button
-            if self.is_present(self.locator["radio_select"]):
-                try:
-                    input = field.find_element(By.CSS_SELECTOR, "input[type='radio'][value={}]".format(answer))
-                    input.execute_script("arguments[0].click();", input)
-                except Exception as e:
-                    log.error(e)
-                    continue
-            # multi select
-            elif self.is_present(self.locator["multi_select"]):
-                try:
-                    input = field.find_element(self.locator["multi_select"])
-                    input.send_keys(answer)
-                except Exception as e:
-                    log.error(e)
-                    continue
-            # text box
-            elif self.is_present(self.locator["text_select"]):
-                try:
-                    input = field.find_element(self.locator["text_select"])
-                    input.send_keys(answer)
-                except Exception as e:
-                    log.error(e)
-                    continue
-
-            elif self.is_present(self.locator["text_select"]):
-                pass
-
-            if "Yes" or "No" in answer:  # radio button
-                try:  # debug this
-                    input = form.find_element(By.CSS_SELECTOR, "input[type='radio'][value={}]".format(answer))
-                    form.execute_script("arguments[0].click();", input)
-                except:
-                    pass
-
-
-            else:
-                input = form.find_element(By.CLASS_NAME, "artdeco-text-input--input")
-                input.send_keys(answer)
-
-    def ans_question(self, question):  # refactor this to an ans.yaml file
-        answer = None
-        if "how many" in question:
-            answer = "1"
-        elif "experience" in question:
-            answer = "1"
-        elif "sponsor" in question:
-            answer = "No"
-        elif 'do you ' in question:
-            answer = "Yes"
-        elif "have you " in question:
-            answer = "Yes"
-        elif "US citizen" in question:
-            answer = "Yes"
-        elif "are you " in question:
-            answer = "Yes"
-        elif "salary" in question:
-            answer = self.salary
-        elif "can you" in question:
-            answer = "Yes"
-        elif "gender" in question:
-            answer = "Male"
-        elif "race" in question:
-            answer = "Wish not to answer"
-        elif "lgbtq" in question:
-            answer = "Wish not to answer"
-        elif "ethnicity" in question:
-            answer = "Wish not to answer"
-        elif "nationality" in question:
-            answer = "Wish not to answer"
-        elif "government" in question:
-            answer = "I do not wish to self-identify"
-        elif "are you legally" in question:
-            answer = "Yes"
-        else:
-            log.info("Not able to answer question automatically. Please provide answer")
-            # open file and document unanswerable questions, appending to it
-            answer = "user provided"
-            time.sleep(15)
-
-            # df = pd.DataFrame(self.answers, index=[0])
-            # df.to_csv(self.qa_file, encoding="utf-8")
-        log.info("Answering question: " + question + " with answer: " + answer)
-
-        # Append question and answer to the CSV
-        if question not in self.answers:
-            self.answers[question] = answer
-            # Append a new question-answer pair to the CSV file
-            new_data = pd.DataFrame({"Question": [question], "Answer": [answer]})
-            new_data.to_csv(self.qa_file, mode='a', header=False, index=False, encoding='utf-8')
-            log.info(f"Appended to QA file: '{question}' with answer: '{answer}'.")
-
-        return answer
 
     def load_page(self, sleep=1):
         scroll_page = 0
@@ -804,6 +552,7 @@ if __name__ == '__main__':
                        blacklist=blacklist,
                        blackListTitles=blackListTitles,
                        experience_level=parameters.get('experience_level', []),
-                       generate_custom_resume=parameters.get('generate_custom_resume', False)
+                       generate_custom_resume=parameters.get('generate_custom_resume', True),
+                       scrape_only_mode=True
                        )
     bot.start_apply(positions, locations)
